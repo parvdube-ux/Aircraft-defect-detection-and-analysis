@@ -22,6 +22,7 @@ import numpy as np
 import cv2
 from PIL import Image
 import torch
+import gc
 # Memory optimizations for cloud deployment (e.g. Render Free Tier)
 torch.set_num_threads(1)
 torch.set_grad_enabled(False)
@@ -268,7 +269,8 @@ async def detect(
             max(detections, key=lambda d: RISK_ORDER.index(d["risk"]))["risk"]
             if detections else "None"
         )
-
+        
+        gc.collect()
         return {
             "image_name":    file.filename,
             "tmp_path":      tmp_path,
@@ -289,7 +291,7 @@ async def detect(
 @app.post("/api/eigencam")
 async def eigencam(
     file: UploadFile = File(...),
-    img_size: int = Query(640),
+    img_size: int = Query(320),
     layer_index: int = Query(-2),
 ):
     """
@@ -328,11 +330,19 @@ async def eigencam(
 
         target_layers = [model.model.model[layer_index]]
         cam = EigenCAM(model, target_layers, task="od")
-        grayscale_cam = cam(img_rgb)[0, :, :]
-        cam_image = show_cam_on_image(img_float, grayscale_cam, use_rgb=True)
+        grayscale_cam_320 = cam(img_rgb_resized)[0, :, :]
+        
+        # Scale the heatmap back up to the ORIGINAL image size for a crystal clear output
+        h, w = img_bgr.shape[:2]
+        grayscale_cam_full = cv2.resize(grayscale_cam_320, (w, h))
+        img_rgb_full = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        img_float_full = np.float32(img_rgb_full) / 255.0
+        
+        cam_image = show_cam_on_image(img_float_full, grayscale_cam_full, use_rgb=True)
 
+        gc.collect()
         return {
-            "original_b64": img_to_b64(img_rgb),
+            "original_b64": img_to_b64(img_rgb_full),
             "heatmap_b64":  img_to_b64(cam_image),
         }
     except Exception as e:
@@ -368,9 +378,10 @@ async def generate_maintenance_report(
         img_bgr = cv2.imread(tmp_path)
         if img_bgr is None:
             raise HTTPException(status_code=400, detail="Could not read image.")
+        img_bgr = cv2.resize(img_bgr, (320, 320))
         h, w = img_bgr.shape[:2]
         img_area = h * w
-        result = model.predict(tmp_path, conf=conf_threshold, verbose=False)[0]
+        result = model.predict(tmp_path, imgsz=320, conf=conf_threshold, verbose=False)[0]
         detections = []
         for box in result.boxes:
             cls_id = int(box.cls[0])
@@ -414,7 +425,8 @@ async def generate_maintenance_report(
             {"role": "user",      "content": f"Inspection data:\n{context}\nI may ask follow-up questions."},
             {"role": "assistant", "content": report_text},
         ]
-
+        
+        gc.collect()
         return {
             "report":      report_text,
             "detections":  detections,
@@ -446,6 +458,8 @@ async def chat(msg: ChatMessage):
     )
     answer = response.choices[0].message.content
     history.append({"role": "assistant", "content": answer})
+    
+    gc.collect()
     return {"answer": answer, "session_id": msg.session_id}
 
 
@@ -494,9 +508,10 @@ async def generate_pdf(
         img_bgr = cv2.imread(tmp_path)
         if img_bgr is None:
             raise HTTPException(status_code=400, detail="Could not read image.")
+        img_bgr = cv2.resize(img_bgr, (320, 320))
         h, w = img_bgr.shape[:2]
         img_area = h * w
-        result = model.predict(tmp_path, conf=conf_threshold, verbose=False)[0]
+        result = model.predict(tmp_path, imgsz=320, conf=conf_threshold, verbose=False)[0]
         detections = []
         annotated  = img_bgr.copy()
         for box in result.boxes:
@@ -528,7 +543,7 @@ async def generate_pdf(
             report_text = resp.choices[0].message.content
 
         # Generate EigenCAM Heatmap
-        img_size = 640
+        img_size = 320
         layer_index = -2
         img_resized = cv2.resize(img_bgr, (img_size, img_size))
         img_rgb_resized = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
@@ -536,8 +551,15 @@ async def generate_pdf(
 
         target_layers = [model.model.model[layer_index]]
         cam = EigenCAM(model, target_layers, task="od")
-        grayscale_cam = cam(img_rgb_resized)[0, :, :]
-        cam_image = show_cam_on_image(img_float, grayscale_cam, use_rgb=True)
+        grayscale_cam_320 = cam(img_rgb_resized)[0, :, :]
+        
+        # Scale the heatmap back up to the ORIGINAL image size
+        h, w = img_bgr.shape[:2]
+        grayscale_cam_full = cv2.resize(grayscale_cam_320, (w, h))
+        img_rgb_full = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        img_float_full = np.float32(img_rgb_full) / 255.0
+        
+        cam_image = show_cam_on_image(img_float_full, grayscale_cam_full, use_rgb=True)
 
         # Save images to tmp files for FPDF
         tmp_dir  = BASE_DIR / "tmp_report_imgs"
@@ -608,6 +630,7 @@ async def generate_pdf(
         })
         _save_history(history)
 
+        gc.collect()
         return {"pdf_url": f"/reports/{pdf_name}", "pdf_name": pdf_name}
     except HTTPException:
         raise
