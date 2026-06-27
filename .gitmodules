@@ -1,0 +1,3 @@
+[submodule "yolo_cam_repo"]
+	path = yolo_cam_repo
+	url = https://github.com/rigvedrs/YOLO-V8-CAM.git
