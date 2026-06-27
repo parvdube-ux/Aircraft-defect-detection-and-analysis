@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdgeVision Aerospace v2.1</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Markdown Parser for AI Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --surface: #111111;
+            --surface-hover: #1a1a1a;
+            --border: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.5);
+            --accent: #0ea5e9;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Top Config Bar */
+        .config-bar {
+            background: rgba(0,0,0,0.5);
+            padding: 8px 32px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .config-bar input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            margin-left: 12px;
+            font-family: monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .config-bar input:focus { border-color: var(--primary); }
+
+        /* Header */
+        header {
+            padding: 24px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        /* Main Grid */
+        main {
+            flex: 1;
+            padding: 0 48px 48px 48px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @media (max-width: 1024px) {
+            main { grid-template-columns: 1fr; }
+        }
+
+        /* Glass Cards */
+        .card {
+            background: rgba(17, 17, 17, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+        }
+
+        .card-header {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .styled-file-input {
+            width: 100%;
+            padding: 24px;
+            background: rgba(255,255,255,0.02);
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: var(--radius-md);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .styled-file-input:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+        .styled-file-input::file-selector-button {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin-right: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .styled-file-input::file-selector-button:hover {
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        /* Media Previews */
+        .preview-stack {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .preview-box {
+            position: relative;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #000;
+            border: 1px solid var(--border);
+        }
+        .preview-box img {
+            width: 100%;
+            display: block;
+            object-fit: contain;
+            max-height: 500px;
+        }
+        .preview-badge {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #heatmap-container { display: none; }
+
+        /* Action Buttons */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: auto;
+        }
+        .btn {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn:hover:not(:disabled) {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            color: white;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb, #0284c7);
+            box-shadow: 0 8px 25px var(--primary-glow);
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Results Area */
+        .results-scroll {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        .results-scroll::-webkit-scrollbar { width: 6px; }
+        .results-scroll::-webkit-scrollbar-track { background: transparent; }
+        .results-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            opacity: 0.6;
+        }
+
+        /* Metric Cards */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .metric-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
+        /* Defect List */
+        .defect-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .defect-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .defect-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .defect-name { font-weight: 600; text-transform: capitalize; font-size: 1.05rem; }
+        .defect-meta { color: var(--text-muted); font-size: 0.85rem; }
+
+        /* Badges */
+        .badge {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-low { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-medium { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-high { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-critical { 
+            background: rgba(220, 38, 38, 0.2); 
+            color: #fca5a5; 
+            border: 1px solid var(--danger);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+        }
+
+        /* Alert Box */
+        .alert-banner {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+            border-left: 4px solid var(--danger);
+            border-radius: 0 12px 12px 0;
+            padding: 20px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Beautiful Markdown Report */
+        .report-card {
+            background: rgba(14, 165, 233, 0.03);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .report-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+        .report-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            color: var(--accent);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        /* Markdown Rendering Styles */
+        .md-content {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #d1d5db;
+        }
+        .md-content h1, .md-content h2, .md-content h3 {
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            margin-top: 1.5em;
+            margin-bottom: 0.75em;
+            font-weight: 600;
+        }
+        .md-content h1 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5em; }
+        .md-content h2 { font-size: 1.2rem; }
+        .md-content h3 { font-size: 1.05rem; color: var(--accent); }
+        .md-content p { margin-bottom: 1em; }
+        .md-content strong { color: white; font-weight: 600; }
+        .md-content ul, .md-content ol { margin-left: 1.5em; margin-bottom: 1em; }
+        .md-content li { margin-bottom: 0.5em; }
+        .md-content blockquote {
+            border-left: 3px solid var(--primary);
+            padding-left: 1em;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.02);
+            padding: 10px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="config-bar">
+        Server API URL: <input type="text" id="api-url" value="http://localhost:8000">
+    </div>
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-9 5 18 3-9h6"/></svg>
+            </div>
+            EdgeVision AI v2.1
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.95rem; font-weight: 500;">Aerospace MRO Assistant</div>
+    </header>
+
+    <main>
+        <!-- Left Panel: Upload & Actions -->
+        <section class="card">
+            <div class="card-header">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Inspection Module
+            </div>
+
+            <div id="drop-zone" style="margin-bottom: 24px;">
+                <input type="file" id="file-input" accept="image/*" class="styled-file-input">
+            </div>
+
+            <div class="preview-stack" id="preview-stack">
+                <div class="preview-box">
+                    <div class="preview-badge" style="color: var(--primary);">Original Image</div>
+                    <img id="main-image" alt="Original Inspection">
+                </div>
+            </div>
+
+            <div class="actions-grid">
+                <button class="btn btn-primary" id="btn-detect" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span>Run Detection</span>
+                </button>
+                <button class="btn" id="btn-heatmap" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"/></svg>
+                    <span>Heatmap</span>
+                </button>
+                <button class="btn" id="btn-report" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span>AI Report</span>
+                </button>
+                <button class="btn" id="btn-pdf" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Export PDF</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Right Panel: Results -->
+        <section class="card">
+            <div class="card-header">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Intelligence Hub
+            </div>
+            
+            <div class="results-scroll" id="results-content">
+                <div class="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <p>Awaiting component image.<br>Upload and run detection to view diagnostics.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Configure marked.js options for security and styling
+        marked.setOptions({
+            breaks: true, // translate \n to <br>
+            gfm: true, // GitHub Flavored Markdown
+        });
+
+        // Use the API key from environment variables (backend)
+        const OPENAI_API_KEY = "";
+        
+        let currentFile = null;
+        let originalB64 = null;
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewStack = document.getElementById('preview-stack');
+        const mainImage = document.getElementById('main-image');
+        const heatmapContainer = document.getElementById('heatmap-container');
+        const heatmapImage = document.getElementById('heatmap-image');
+        
+        const btnDetect = document.getElementById('btn-detect');
+        const btnHeatmap = document.getElementById('btn-heatmap');
+        const btnReport = document.getElementById('btn-report');
+        const btnPdf = document.getElementById('btn-pdf');
+        
+        const resultsContent = document.getElementById('results-content');
+        
+        function getApiUrl() {
+            return document.getElementById('api-url').value;
+        }
+
+        // File handling
+        // We use the native file input directly now, drag and drop on document is ignored for simplicity
+        
+        fileInput.addEventListener('click', (e) => {
+            e.target.value = ''; // Must use empty string, null throws DOM exception
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            try {
+                // alert("File selected: " + file.name + " (Size: " + file.size + ")");
+                currentFile = file;
+                originalB64 = null;
+                
+                // Reset UI
+                dropZone.style.display = 'none';
+                previewStack.style.display = 'flex';
+                
+                // Create isolated containers to prevent async race conditions
+                resultsContent.innerHTML = `
+                    <div id="detect-results" style="margin-bottom: 24px;">
+                        <div class="empty-state" style="opacity: 1;">
+                            <div class="spinner" style="margin-bottom: 12px;"></div>
+                            <p style="color: white; font-weight: 500;">Running Detection Engine...</p>
+                        </div>
+                    </div>
+                    <div id="heatmap-results" style="margin-bottom: 24px;"></div>
+                    <div id="report-results" style="margin-bottom: 24px;"></div>
+                `;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                mainImage.src = e.target.result;
+                originalB64 = e.target.result.split(',')[1];
+            };
+            reader.readAsDataURL(file);
+
+            btnDetect.disabled = false;
+            btnHeatmap.disabled = false;
+            btnReport.disabled = false;
+            btnPdf.disabled = false;
+            
+            // Automatically run all features to orchestrate a seamless experience
+            Promise.all([
+                doDetect(),
+                doHeatmap(),
+                doReport()
+            ]).catch(err => console.error("Error in auto-run sequence", err));
+
+            } catch(e) {
+                alert("Error in handleFile: " + e.message);
+            }
+        }
+
+        function getRiskBadge(risk) {
+            const r = risk.toLowerCase();
+            return `<span class="badge badge-${r}">${risk}</span>`;
+        }
+
+        async function doDetect() {
+            if (!currentFile) return;
+            const originalContent = btnDetect.innerHTML;
+            btnDetect.innerHTML = '<div class="spinner"></div> <span>Detecting...</span>';
+            btnDetect.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            
+            try {
+                const res = await fetch(`${getApiUrl()}/api/detect`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`Server returned ${res.status}: ${text}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.annotated_b64) {
+                    mainImage.src = 'data:image/png;base64,' + data.annotated_b64;
+                }
+                originalB64 = data.original_b64;
+
+                let html = `
+                    <div class="preview-box" style="margin-bottom: 24px; animation: fadeIn 0.4s ease-out;">
+                        <div class="preview-badge" style="color: var(--primary);">Detection Map</div>
+                        <img src="data:image/png;base64,${data.annotated_b64 || data.original_b64}" style="width: 100%; border-radius: var(--radius-md);">
+                    </div>
+                    <div class="metrics-row" style="animation: fadeIn 0.4s ease-out;">
+                        <div class="metric-box">
+                            <div style="color: var(--text-muted); font-size: 0.9rem;">Total Defects</div>
+                            <div class="metric-value">${data.total_defects}</div>
+                        </div>
+                        <div class="metric-box">
+                            <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 8px;">Highest Risk</div>
+                            <div>${getRiskBadge(data.highest_risk)}</div>
+                        </div>
+                    </div>
+                `;
+
+                let requiresManualReview = false;
+
+                if (data.detections.length > 0) {
+                    html += `<div class="defect-list" style="animation: fadeIn 0.5s ease-out;">`;
+                    data.detections.forEach((d) => {
+                        const isBg = d.class.toLowerCase().includes('background');
+                        const lowConf = d.confidence < 0.4;
+                        if (isBg || lowConf) requiresManualReview = true;
+                        
+                        html += `
+                            <div class="defect-item">
+                                <div class="defect-info">
+                                    <div class="defect-name">${d.class}</div>
+                                    <div class="defect-meta">
+                                        Confidence: ${(d.confidence * 100).toFixed(1)}% &nbsp;&bull;&nbsp; Area: ${(d.area_ratio * 100).toFixed(1)}%
+                                    </div>
+                                </div>
+                                ${getRiskBadge(d.risk)}
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `
+                        <div style="text-align: center; padding: 32px; background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 12px; color: var(--success); font-weight: 500;">
+                            No critical defects detected above threshold.
+                        </div>
+                    `;
+                }
+
+                if (requiresManualReview) {
+                    html += `
+                        <div class="alert-banner">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--danger); flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <div>
+                                <div style="font-weight: 700; color: #fca5a5; margin-bottom: 4px; font-size: 1.05rem;">MANUAL REVIEW REQUIRED</div>
+                                <div style="color: rgba(255,255,255,0.8); font-size: 0.9rem; line-height: 1.5; margin-bottom: 12px;">
+                                    The system detected a potential background anomaly or low confidence score (< 40%). This inspection has been flagged for human verification.
+                                </div>
+                                <button style="background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: inherit;">
+                                    Acknowledge & Escalate
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('detect-results').innerHTML = html;
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('detect-results').innerHTML = `<div style="color: var(--danger); padding: 20px; border: 1px solid var(--danger); border-radius: 12px; background: rgba(239, 68, 68, 0.1);">Error connecting to backend API: ${err.message}</div>`;
+            } finally {
+                btnDetect.innerHTML = originalContent;
+                btnDetect.disabled = false;
+            }
+        }
+
+        async function doHeatmap() {
+            if (!currentFile) return;
+            const originalContent = btnHeatmap.innerHTML;
+            btnHeatmap.innerHTML = '<div class="spinner"></div> <span>Generating...</span>';
+            btnHeatmap.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            
+            try {
+                const res = await fetch(`${getApiUrl()}/api/eigencam?layer_index=-2`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`Server returned ${res.status}: ${text}`);
+                }
+                const data = await res.json();
+                
+                if (data.heatmap_b64) {
+                    document.getElementById('heatmap-results').innerHTML = `
+                        <div class="preview-box" style="margin-bottom: 24px; animation: fadeIn 0.4s ease-out;">
+                            <div class="preview-badge" style="color: var(--warning);">EigenCAM Heatmap (Layer -2)</div>
+                            <img src="data:image/png;base64,${data.heatmap_b64}" style="width: 100%; border-radius: var(--radius-md);">
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('heatmap-results').innerHTML = `<div style="color: var(--danger);">Heatmap error: ${err.message}</div>`;
+            }
+            btnHeatmap.innerHTML = originalContent;
+            btnHeatmap.disabled = false;
+        }
+
+        async function doReport() {
+            if (!currentFile) return;
+            const originalContent = btnReport.innerHTML;
+            btnReport.innerHTML = '<div class="spinner"></div> <span>AI Analyzing...</span>';
+            btnReport.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            
+            try {
+                // 1. Fetch from Backend LLM Route
+                const res = await fetch(`${getApiUrl()}/api/report/generate`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`Server returned ${res.status}: ${text}`);
+                }
+                const data = await res.json();
+                
+                // Parse markdown into clean HTML
+                const parsedMarkdown = marked.parse(data.report);
+
+                let reportHtml = `
+                    <div class="report-card" style="animation: slideIn 0.5s ease-out; margin-top: 16px;">
+                        <div class="report-header">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                            Standard Technical Report
+                        </div>
+                        <div class="md-content">
+                            ${parsedMarkdown}
+                        </div>
+                    </div>
+                `;
+                
+                // 2. Fetch from Vision LLM Native Call for extra accuracy (Frontend only bypass)
+                if (originalB64) {
+                    reportHtml += `
+                        <div class="report-card" id="vision-box" style="animation: slideIn 0.6s ease-out; margin-top: 16px; border-color: rgba(139, 92, 246, 0.3);">
+                            <div class="report-header" style="color: #a78bfa;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                Advanced Vision Analysis (Direct)
+                            </div>
+                            <div class="md-content" id="vision-content">
+                                <div style="display:flex; align-items:center; gap: 8px; color: var(--text-muted);">
+                                    <div class="spinner" style="width: 14px; height: 14px; border-top-color: #a78bfa;"></div>
+                                    Vision model interpreting raw pixels...
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Append the HTML
+                document.getElementById('report-results').innerHTML = reportHtml;
+                
+                // Execute Vision fetch asynchronously to not block standard report UI
+                if (originalB64) {
+                    fetch("https://api.openai.com/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": \`Bearer \${OPENAI_API_KEY}\`
+                        },
+                        body: JSON.stringify({
+                            model: "gpt-4o-mini",
+                            messages: [
+                                {
+                                    role: "system",
+                                    content: "You are an expert aerospace maintenance vision AI. Analyze the image and provide a highly accurate assessment of any visible defects. Format your response in clean Markdown with bolded headers and bullet points."
+                                },
+                                {
+                                    role: "user",
+                                    content: [
+                                        { type: "text", text: "Please analyze this component image. What defects do you see? Provide a detailed visual inspection summary." },
+                                        { type: "image_url", image_url: { url: \`data:image/png;base64,\${originalB64}\` } }
+                                    ]
+                                }
+                            ],
+                            max_tokens: 400,
+                            temperature: 0.2
+                        })
+                    }).then(visionRes => visionRes.json()).then(visionData => {
+                        const visionBox = document.getElementById('vision-content');
+                        if (visionData.choices && visionData.choices.length > 0) {
+                            // Parse vision response Markdown!
+                            visionBox.innerHTML = marked.parse(visionData.choices[0].message.content);
+                        } else {
+                            visionBox.innerHTML = "Vision API analysis failed or returned no response.";
+                        }
+                    }).catch(err => {
+                        document.getElementById('vision-content').innerHTML = "Failed to connect to Vision API.";
+                    });
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Error generating report: " + err.message);
+            } finally {
+                btnReport.innerHTML = originalContent;
+                btnReport.disabled = false;
+            }
+        }
+
+        async function doPdf() {
+            if (!currentFile) return;
+            const originalContent = btnPdf.innerHTML;
+            btnPdf.innerHTML = '<div class="spinner"></div> <span>Exporting...</span>';
+            btnPdf.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            
+            try {
+                const res = await fetch(`${getApiUrl()}/api/pdf`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.pdf_url) {
+                    window.open(getApiUrl() + data.pdf_url, '_blank');
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error exporting PDF: " + err.message);
+            } finally {
+                btnPdf.innerHTML = originalContent;
+                btnPdf.disabled = false;
+            }
+        }
+
+        btnDetect.addEventListener('click', doDetect);
+        btnHeatmap.addEventListener('click', doHeatmap);
+        btnReport.addEventListener('click', doReport);
+        btnPdf.addEventListener('click', doPdf);
+
+    </script>
+</body>
+</html>

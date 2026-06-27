@@ -1,0 +1,11 @@
+numpy
+opencv-python
+Pillow
+torch
+torchvision
+ultralytics
+ttach
+fastapi
+python-multipart
+openai
+fpdf2

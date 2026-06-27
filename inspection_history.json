@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp": "2026-06-27T12:07:26.181080",
+    "image": "Screenshot_27-6-2026_02229_www.bing.com.jpeg",
+    "detections": [
+      {
+        "class": "Crack",
+        "confidence": 0.856,
+        "bbox": [
+          0,
+          0,
+          680,
+          514
+        ],
+        "area_ratio": 0.9927,
+        "risk": "Critical"
+      }
+    ],
+    "summary": "**Inspection Report for Screenshot_27-6-2026_02229**\n\n**Findings:**\n- A significant crack has been detected in the inspected component, covering approximately 99.3% of the image area. The detection confidence is high at 86%.\n\n**Maintenance Recommendations:**\n- Immediate inspection by a qualified aircraft maintenance engineer is required to assess the severity and implications of the crack. Given the critical risk tag, this defect poses a serious concern for structural integrity.\n\n**Preventive Actions:**\n- Implement regular inspections of the affected area to monitor for any further deterioration or new defects.\n- Review maintenance protocols to ensure that similar issues are identified earlier in future inspections.\n\n**Note:**\n- The risk tag is a heuristic estimate and does not constitute a certified airworthiness determination. A thorough human inspection is necessary to confirm the findings and determine the appropriate course of action.",
+    "pdf_report": "C:\\Users\\steve\\OneDrive\\Desktop\\final fastapi\\reports\\inspection_1782542246.pdf"
+  }
+]
