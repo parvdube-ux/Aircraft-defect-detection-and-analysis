@@ -287,6 +287,89 @@ def clone_yolo_cam():
         sys.path.append(str(YOLO_CAM_DIR))
     return True, None
 
+class YOLOv8GradCAM:
+    def __init__(self, model, target_layer):
+        self.model = model
+        self.target_layer = target_layer
+        self.activations = None
+        self.gradients = None
+        
+        # Register hooks
+        self.forward_hook = target_layer.register_forward_hook(self._save_activation)
+        self.backward_hook = target_layer.register_full_backward_hook(self._save_gradient)
+
+    def _save_activation(self, module, input, output):
+        self.activations = output
+
+    def _save_gradient(self, module, grad_input, grad_output):
+        self.gradients = grad_output[0]
+
+    def __call__(self, img_np, target_category=0):
+        h, w = img_np.shape[:2]
+        
+        # Preprocess
+        img_resized = cv2.resize(img_np, (320, 320))
+        img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+        
+        device = next(self.model.model.parameters()).device
+        img_tensor = img_tensor.to(device)
+        img_tensor.requires_grad = True
+        
+        # Enable gradients temporarily
+        with torch.enable_grad():
+            self.model.model.zero_grad()
+            outputs = self.model.model(img_tensor)
+            
+            if isinstance(outputs, (list, tuple)):
+                output_tensor = outputs[0]
+            else:
+                output_tensor = outputs
+                
+            score_index = 4 + target_category
+            if score_index >= output_tensor.shape[1]:
+                score_index = 4
+                
+            loss = output_tensor[0, score_index, :].sum()
+            loss.backward(retain_graph=True)
+            
+        if self.activations is not None and self.gradients is not None:
+            act = self.activations.detach().cpu().numpy()[0]
+            grad = self.gradients.detach().cpu().numpy()[0]
+            
+            weights = np.mean(grad, axis=(1, 2))
+            
+            cam = np.zeros(act.shape[1:], dtype=np.float32)
+            for i, w_i in enumerate(weights):
+                cam += w_i * act[i]
+                
+            cam = np.maximum(cam, 0)
+            cam_min, cam_max = cam.min(), cam.max()
+            if cam_max > cam_min:
+                cam = (cam - cam_min) / (cam_max - cam_min)
+            else:
+                # SVD fallback
+                reshaped = act.reshape(act.shape[0], -1).T
+                U, S, Vt = np.linalg.svd(reshaped, full_matrices=False)
+                projection = U[:, 0].reshape(act.shape[1:])
+                projection = np.abs(projection)
+                proj_min, proj_max = projection.min(), projection.max()
+                if proj_max > proj_min:
+                    cam = (projection - proj_min) / (proj_max - proj_min)
+                else:
+                    cam = np.zeros_like(cam)
+                
+            cam = cv2.resize(cam, (w, h))
+            return cam
+        else:
+            return np.zeros((h, w), dtype=np.float32)
+
+    def release(self):
+        try:
+            self.forward_hook.remove()
+            self.backward_hook.remove()
+        except Exception:
+            pass
+
 # ── Helper Functions ────────────────────────────────────────────────────
 
 def estimate_risk(class_name: str, confidence: float, area_ratio: float) -> str:
@@ -528,29 +611,34 @@ if uploaded_file is not None:
                 if detections else "None"
             )
 
-            # Generate EigenCAM
+            # Generate GradCAM
             heatmap_pil = None
             cam_ok, cam_err = clone_yolo_cam()
             if cam_ok:
                 try:
-                    from yolo_cam.eigen_cam import EigenCAM
+                    # Determine target category index for class-specific GradCAM
+                    target_category = 0
+                    if detections:
+                        highest_risk_det = max(detections, key=lambda d: RISK_ORDER.index(d["risk"]))
+                        highest_risk_cls = highest_risk_det["class"]
+                        for idx, name in class_names.items():
+                            if name == highest_risk_cls:
+                                target_category = idx
+                                break
+                                
+                    target_layer = model.model.model[-2]
+                    cam = YOLOv8GradCAM(model, target_layer)
+                    grayscale_cam_full = cam(img_bgr, target_category=target_category)
+                    cam.release()
+                    
                     from yolo_cam.utils.image import show_cam_on_image
-                    
-                    img_resized = cv2.resize(img_bgr, (320, 320))
-                    img_rgb_resized = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
-                    
-                    target_layers = [model.model.model[-2]]
-                    cam = EigenCAM(model, target_layers, task="od")
-                    grayscale_cam_320 = cam(img_rgb_resized)[0, :, :]
-                    
-                    grayscale_cam_full = cv2.resize(grayscale_cam_320, (w, h))
                     img_rgb_full = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
                     img_float_full = np.float32(img_rgb_full) / 255.0
                     
                     cam_image = show_cam_on_image(img_float_full, grayscale_cam_full, use_rgb=True)
                     heatmap_pil = Image.fromarray(cam_image)
                 except Exception as e:
-                    cam_err = f"EigenCAM error: {e}"
+                    cam_err = f"GradCAM error: {e}"
             
             # Generate OpenAI Maintenance Report if key is provided
             openai_report = "OpenAI API key not configured. Enable in sidebar to generate AI reports."
@@ -651,7 +739,7 @@ if uploaded_file is not None:
                     heat_path = str(tmp_dir / "heatmap.png")
                     heatmap_pil.save(heat_path)
                     pdf.ln(img_w * 0.75 + 5)
-                    pdf.cell(0, 8, "EigenCAM Heatmap Overlay", ln=True)
+                    pdf.cell(0, 8, "GradCAM Heatmap Overlay", ln=True)
                     pdf.image(heat_path, x=10, y=pdf.get_y(), w=img_w)
                     pdf.ln(img_w * 0.75 + 10)
                 else:
@@ -867,15 +955,15 @@ with tab_cam:
     else:
         results = st.session_state.analysis_results
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown('<div class="glass-header">🔬 EigenCAM Explainability Heatmap</div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-header">🔬 GradCAM Explainability Heatmap</div>', unsafe_allow_html=True)
         st.markdown("""
-            This heatmap displays activation maps from the deep feature layers of the model (Layer -2). 
-            Warm regions (red/orange) indicate where the neural network focused its attention when analyzing structural integrity.
+            This heatmap displays class-specific activation maps from the deep feature layers of the model (Layer -2) using Grad-CAM. 
+            Warm regions (red/orange) indicate where the neural network focused its attention to detect structural defects.
         """)
         if results["heatmap_img"]:
             st.image(results["heatmap_img"], use_container_width=True)
         else:
-            st.warning("EigenCAM activation map was not generated. Check if YOLO-CAM cloned correctly.")
+            st.warning("GradCAM activation map was not generated.")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Render Chat Tab ─────────────────────────────────────────────────────
