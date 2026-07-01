@@ -278,28 +278,24 @@ def get_mro_estimates(class_name: str, risk: str):
         return {
             "urgency": "🚨 AOG (Aircraft on Ground) - Dispatch Prohibited",
             "hours": "12 - 36 Hours",
-            "cost": "$8,500 - $22,000",
             "action": "Immediate grounding and structural engineering review required."
         }
     elif risk_lower == "high":
         return {
             "urgency": "⚠️ Inspect within 24 Hours",
             "hours": "6 - 12 Hours",
-            "cost": "$2,500 - $7,500",
             "action": "Schedule immediate hangar repair. Non-destructive testing (NDT) required."
         }
     elif risk_lower == "medium":
         return {
             "urgency": "⏰ Repair at next C-Check (Within 100 flight hours)",
             "hours": "2 - 6 Hours",
-            "cost": "$800 - $2,500",
             "action": "Log defect in logbook. Periodic monitoring required every pre-flight inspection."
         }
     else: # Low
         return {
             "urgency": "🔧 Routine Maintenance",
             "hours": "0.5 - 2 Hours",
-            "cost": "$150 - $600",
             "action": "Repair during next scheduled overnight line check."
         }
 
@@ -821,20 +817,23 @@ with tab_dashboard:
                     except Exception:
                         cropped_img = None
 
-                with st.expander(f"🔍 Defect #{idx+1}: {d['class'].upper()} ({d['risk']} Risk)"):
-                    col_crop, col_info = st.columns([1, 2])
-                    with col_crop:
-                        if cropped_img:
-                            st.image(cropped_img, caption=f"Cropped {d['class'].upper()} View", use_container_width=True)
-                        else:
-                            st.info("Cropped region unavailable.")
-                    with col_info:
-                        st.markdown(f"**Class Category:** `{d['class']}`")
-                        st.markdown(f"**Confidence Level:** `{d['confidence']*100:.1f}%` &nbsp;|&nbsp; **Relative Size:** `{d['area_ratio']*100:.2f}%` of image")
-                        st.markdown(f"**MRO Urgency Protocol:** {estimates['urgency']}")
-                        st.markdown(f"**Estimated Labor Hours:** `{estimates['hours']}`")
-                        st.markdown(f"**Estimated Material Cost:** `{estimates['cost']}`")
-                        st.markdown(f"**Recommended Maintenance Action:** *{estimates['action']}*")
+                st.markdown(f"**🔍 Defect #{idx+1}: {d['class'].upper()} ({d['risk']} Risk)**")
+                col_crop, col_info = st.columns([1, 2])
+                with col_crop:
+                    if cropped_img:
+                        st.image(cropped_img, caption=f"Cropped {d['class'].upper()} View", use_container_width=True)
+                    else:
+                        st.info("Cropped region unavailable.")
+                with col_info:
+                    st.markdown(f"**Class Category:** `{d['class']}`")
+                    st.markdown(f"**Confidence Level:** `{d['confidence']*100:.1f}%` &nbsp;|&nbsp; **Relative Size:** `{d['area_ratio']*100:.2f}%` of image")
+                    st.markdown(f"**MRO Urgency Protocol:** {estimates['urgency']}")
+                    st.markdown(f"**Estimated Labor Hours:** `{estimates['hours']}`")
+                    st.markdown(f"**Recommended Maintenance Action:** *{estimates['action']}*")
+                
+                # Add spacing divider if not the last item
+                if idx < len(results["detections"]) - 1:
+                    st.markdown('<hr style="border-top: 1px solid rgba(255, 255, 255, 0.05); margin: 15px 0;">', unsafe_allow_html=True)
         else:
             st.markdown('<p style="color:#10b981; font-weight:500;">No critical structural defects found above confidence threshold.</p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
