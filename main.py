@@ -836,22 +836,7 @@ with tab_dashboard:
             st.markdown('<p style="color:#10b981; font-weight:500;">No critical structural defects found above confidence threshold.</p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Defect Severity Distribution Chart
-        if results["detections"]:
-            st.markdown('<div class="glass-card" style="margin-top: 24px;">', unsafe_allow_html=True)
-            st.markdown('<div class="glass-header">📊 Defect Severity Distribution</div>', unsafe_allow_html=True)
-            try:
-                import pandas as pd
-                chart_data = pd.DataFrame([
-                    {
-                        "Defect": f"#{i+1} {d['class'].capitalize()}",
-                        "Confidence (%)": d["confidence"] * 100
-                    } for i, d in enumerate(results["detections"])
-                ])
-                st.bar_chart(chart_data, x="Defect", y="Confidence (%)", color="#3b82f6")
-            except Exception as e:
-                st.info(f"Visual chart loaded with placeholder data: {e}")
-            st.markdown('</div>', unsafe_allow_html=True)
+
 
         # Manual Review / Escalation Alert Banner
         if requires_manual:
