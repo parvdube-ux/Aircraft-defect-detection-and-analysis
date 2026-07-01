@@ -12,3 +12,4 @@ fpdf2
 uvicorn
 python-dotenv
 streamlit
+python-dotenv
