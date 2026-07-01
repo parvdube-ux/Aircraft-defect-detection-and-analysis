@@ -368,7 +368,7 @@ if openai_key_input != st.session_state.api_key:
 st.session_state.openai_configured = bool(st.session_state.api_key)
 
 # Model Settings
-model_options = ["gpt-4o-mini", "gpt-4"]
+model_options = ["gpt-4o-mini", "gpt-4o"]
 gpt_model_select = st.sidebar.selectbox("GPT Model", model_options, index=model_options.index(st.session_state.gpt_model))
 if gpt_model_select != st.session_state.gpt_model:
     st.session_state.gpt_model = gpt_model_select
@@ -521,11 +521,17 @@ if uploaded_file is not None:
             client = load_openai_client(st.session_state.api_key)
             if client:
                 try:
-                    # 1. Standard Technical Report
+                    # Convert original image to base64 for multimodal LLM tasks
+                    success, buf = cv2.imencode(".png", img_bgr)
+                    img_b64 = ""
+                    if success:
+                        img_b64 = base64.b64encode(buf.tobytes()).decode()
+
+                    # 1. Standard Technical Report (Multimodal)
                     context = build_inspection_context(detections, uploaded_file.name)
-                    user_prompt = (
+                    user_text = (
                         f"{context}\n\n"
-                        "Please provide:\n"
+                        "Please analyze this component image and the detections, then provide:\n"
                         "1. A short executive summary (2–3 sentences)\n"
                         "2. Risk assessment per defect\n"
                         "3. Recommended maintenance actions (immediate vs. scheduled)\n"
@@ -536,25 +542,43 @@ if uploaded_file is not None:
                         model=st.session_state.gpt_model,
                         messages=[
                             {"role": "system",  "content": SYSTEM_PROMPT},
-                            {"role": "user",    "content": user_prompt},
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": user_text},
+                                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}}
+                                ]
+                            },
                         ],
                         temperature=0.3,
                     )
                     openai_report = response.choices[0].message.content
                     
-                    # Seed chat session
+                    # Seed chat session with image context (Multimodal / Vision)
                     st.session_state.chat_history = [
                         {"role": "system",    "content": SYSTEM_PROMPT},
-                        {"role": "user",      "content": f"Inspection data:\n{context}\nI may ask follow-up questions."},
+                        {
+                            "role": "user",      
+                            "content": [
+                                {
+                                    "type": "text", 
+                                    "text": f"Inspection data:\n{context}\nI have provided the visual image of the component. I may ask follow-up questions."
+                                },
+                                {
+                                    "type": "image_url", 
+                                    "image_url": {
+                                        "url": f"data:image/png;base64,{img_b64}"
+                                    }
+                                }
+                            ]
+                        },
                         {"role": "assistant", "content": openai_report},
                     ]
                     st.session_state.session_id = session_id
 
                     # 2. Vision API direct call
-                    # Convert original to base64
-                    success, buf = cv2.imencode(".png", img_bgr)
-                    if success:
-                        img_b64 = base64.b64encode(buf.tobytes()).decode()
+                    vision_analysis = "Direct Vision Analysis skipped."
+                    if img_b64:
                         vis_response = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=[
